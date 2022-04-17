@@ -13,14 +13,14 @@ import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active
 export const HomeBoardPage: React.FC = () => {
   const [isRollMode, setIsRollMode] = useState(false)
   const [getStudents, data, loadState] = useApi<{ students: Person[] }>({ url: "get-homeboard-students" })
-  const [studentsList,setStudentList]:any=useState()
+  const [studentsList,setStudentsList]:any=useState()
   const [sortOrder,setSortOrder]=useState('decending')
   const [sortingText,setSortingText]=useState('First Name')
 
   useEffect(() => {
     void getStudents()
-    setStudentList(data?.students)
-  }, [studentsList,getStudents])
+    setStudentsList(data?.students)
+  }, [])
 
   const onToolbarAction = (action: ToolbarAction) => {
     if (action === "roll") {
@@ -28,15 +28,14 @@ export const HomeBoardPage: React.FC = () => {
     }
 
     if(action==="sort"){
-
       if(sortingText==="First Name"){
         if(sortOrder==="decending"){
           let list:any=data?.students.sort((a,b)=> a.first_name>b.first_name? 1:-1)
-          setStudentList(list)
+          setStudentsList(list)
           setSortOrder("ascending")
         }else if(sortOrder==="ascending"){
           let list:any=data?.students.sort((a,b)=> a.first_name<b.first_name? 1:-1)
-          setStudentList(list)
+          setStudentsList(list)
           setSortOrder("decending")
         }
       }
@@ -44,11 +43,12 @@ export const HomeBoardPage: React.FC = () => {
       if(sortingText==="Second Name"){
         if(sortOrder==="decending"){
           let list:any=data?.students.sort((a,b)=> a.last_name>b.last_name? 1:-1)
-          setStudentList(list)
+          setStudentsList(list)
           setSortOrder("ascending")
         }else if(sortOrder==="ascending"){
           let list:any=data?.students.sort((a,b)=> a.last_name<b.last_name? 1:-1)
-          setStudentList(list)
+        
+          setStudentsList(list)
           setSortOrder("decending")
         }
       }
@@ -65,6 +65,19 @@ export const HomeBoardPage: React.FC = () => {
     }
   }
 
+  const handleSearch=(e:any)=>{
+    e.preventDefault()
+    let searchedName=e.target.value
+    let res=studentsList.filter(x=>x.first_name===searchedName|| x.last_name===searchedName|| searchedName===x.first_name+ " "+ x.last_name)
+    if(searchedName.length===0){
+      void getStudents()
+      setStudentsList(data?.students)
+    }
+    if(res.length>0){
+       setStudentsList(res)
+    } 
+ }
+
   const onActiveRollAction = (action: ActiveRollAction) => {
     if (action === "exit") {
       setIsRollMode(false)
@@ -74,7 +87,7 @@ export const HomeBoardPage: React.FC = () => {
   return (
     <>
       <S.PageContainer>
-        <Toolbar onItemClick={onToolbarAction} text={sortingText} />
+        <Toolbar onItemClick={onToolbarAction} text={sortingText} handleSearch={handleSearch} />
 
         {loadState === "loading" && (
           <CenteredContainer>
@@ -101,13 +114,16 @@ export const HomeBoardPage: React.FC = () => {
   )
 }
 
-type ToolbarAction = "roll" | "sort" | "changeSortFilter"
+type ToolbarAction = "roll" | "sort" | "changeSortFilter"| "search"
 interface ToolbarProps {
   onItemClick: (action: ToolbarAction, value?: string) => void
   text: (value?: string)=>void
+  handleSearch: (value?: string)=>void
 }
 const Toolbar: React.FC<ToolbarProps> = (props) => {
-  const { onItemClick, text } = props
+  const { onItemClick, text, handleSearch } = props
+
+ 
   return (
     <S.ToolbarContainer>
       <S.Row>
@@ -115,7 +131,7 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
         <div onClick={() => onItemClick("changeSortFilter")}> ↑↓ </div>
       </S.Row>
       
-      <div>Search</div>
+      <input placeholder="enter student name" onChange={handleSearch}/>
       <S.Button onClick={() => onItemClick("roll")}>Start Roll</S.Button>
     </S.ToolbarContainer>
   )
