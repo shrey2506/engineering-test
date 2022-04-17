@@ -13,14 +13,55 @@ import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active
 export const HomeBoardPage: React.FC = () => {
   const [isRollMode, setIsRollMode] = useState(false)
   const [getStudents, data, loadState] = useApi<{ students: Person[] }>({ url: "get-homeboard-students" })
+  const [studentsList,setStudentList]:any=useState()
+  const [sortOrder,setSortOrder]=useState('decending')
+  const [sortingText,setSortingText]=useState('First Name')
 
   useEffect(() => {
     void getStudents()
-  }, [getStudents])
+    setStudentList(data?.students)
+  }, [studentsList,getStudents])
 
   const onToolbarAction = (action: ToolbarAction) => {
     if (action === "roll") {
       setIsRollMode(true)
+    }
+
+    if(action==="sort"){
+
+      if(sortingText==="First Name"){
+        if(sortOrder==="decending"){
+          let list:any=data?.students.sort((a,b)=> a.first_name>b.first_name? 1:-1)
+          setStudentList(list)
+          setSortOrder("ascending")
+        }else if(sortOrder==="ascending"){
+          let list:any=data?.students.sort((a,b)=> a.first_name<b.first_name? 1:-1)
+          setStudentList(list)
+          setSortOrder("decending")
+        }
+      }
+
+      if(sortingText==="Second Name"){
+        if(sortOrder==="decending"){
+          let list:any=data?.students.sort((a,b)=> a.last_name>b.last_name? 1:-1)
+          setStudentList(list)
+          setSortOrder("ascending")
+        }else if(sortOrder==="ascending"){
+          let list:any=data?.students.sort((a,b)=> a.last_name<b.last_name? 1:-1)
+          setStudentList(list)
+          setSortOrder("decending")
+        }
+      }
+    }
+
+    if(action==="changeSortFilter"){
+      if(sortingText==="First Name"){
+        setSortingText("Second Name")
+      }
+
+      if(sortingText==="Second Name"){
+        setSortingText("First Name")
+      }
     }
   }
 
@@ -33,7 +74,7 @@ export const HomeBoardPage: React.FC = () => {
   return (
     <>
       <S.PageContainer>
-        <Toolbar onItemClick={onToolbarAction} />
+        <Toolbar onItemClick={onToolbarAction} text={sortingText} />
 
         {loadState === "loading" && (
           <CenteredContainer>
@@ -41,15 +82,15 @@ export const HomeBoardPage: React.FC = () => {
           </CenteredContainer>
         )}
 
-        {loadState === "loaded" && data?.students && (
+        {loadState === "loaded"  && studentsList && (
           <>
-            {data.students.map((s) => (
+            {studentsList?.map((s) => (
               <StudentListTile key={s.id} isRollMode={isRollMode} student={s} />
             ))}
           </>
         )}
 
-        {loadState === "error" && (
+        {loadState === "error" && studentsList===null && (
           <CenteredContainer>
             <div>Failed to load</div>
           </CenteredContainer>
@@ -60,15 +101,20 @@ export const HomeBoardPage: React.FC = () => {
   )
 }
 
-type ToolbarAction = "roll" | "sort"
+type ToolbarAction = "roll" | "sort" | "changeSortFilter"
 interface ToolbarProps {
   onItemClick: (action: ToolbarAction, value?: string) => void
+  text: (value?: string)=>void
 }
 const Toolbar: React.FC<ToolbarProps> = (props) => {
-  const { onItemClick } = props
+  const { onItemClick, text } = props
   return (
     <S.ToolbarContainer>
-      <div onClick={() => onItemClick("sort")}>First Name</div>
+      <S.Row>
+        <div onClick={() => onItemClick("sort")}>{text} </div>
+        <div onClick={() => onItemClick("changeSortFilter")}> ↑↓ </div>
+      </S.Row>
+      
       <div>Search</div>
       <S.Button onClick={() => onItemClick("roll")}>Start Roll</S.Button>
     </S.ToolbarContainer>
@@ -76,6 +122,10 @@ const Toolbar: React.FC<ToolbarProps> = (props) => {
 }
 
 const S = {
+  Row: styled.div`
+    display: flex;
+    flex-direction: row;
+  `,
   PageContainer: styled.div`
     display: flex;
     flex-direction: column;
@@ -89,6 +139,7 @@ const S = {
     color: #fff;
     background-color: ${Colors.blue.base};
     padding: 6px 14px;
+    cursor: pointer;
     font-weight: ${FontWeight.strong};
     border-radius: ${BorderRadius.default};
   `,
