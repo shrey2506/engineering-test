@@ -9,6 +9,7 @@ import { Person } from "shared/models/person"
 import { useApi } from "shared/hooks/use-api"
 import { StudentListTile } from "staff-app/components/student-list-tile/student-list-tile.component"
 import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active-roll-overlay/active-roll-overlay.component"
+import { RollStateType, RollInput } from "shared/models/roll"
 
 export const HomeBoardPage: React.FC = () => {
   const [isRollMode, setIsRollMode] = useState(false)
@@ -16,15 +17,60 @@ export const HomeBoardPage: React.FC = () => {
   const [studentsList,setStudentsList]:any=useState()
   const [sortOrder,setSortOrder]=useState('decending')
   const [sortingText,setSortingText]=useState('First Name')
+  const [submitAttendance] = useApi({url:'save-roll'})
+  const [attendanceList, setAttendanceList] = useState<Person[]>([])
+  const [rollArray, setRollArray] = useState<RollStateType[]>([])
+  const [rollStateList, setRollStateList] = useState<StateList[]>([
+    { type: "all", count: 0 },
+    { type: "present", count: 0 },
+    { type: "late", count: 0 },
+    { type: "absent", count: 0 },
+  ])
+  const [attendance, setAttendance] = useState<RollInput>({ student_roll_states: [] })
 
   useEffect(() => {
     void getStudents()
     setStudentsList(data?.students)
   }, [])
 
+  useEffect(() => {
+    let newStateList = [...rollStateList]
+    newStateList.map((state) => {
+      state.count = 0
+      rollArray.map((roll) => {
+        if (roll === state.type) {
+          state.count = state.count + 1
+        }
+      })
+    })
+    newStateList[0].count = newStateList[1].count + newStateList[2].count + newStateList[3].count
+    setRollStateList(newStateList)
+  }, [rollArray])
+
+  const onRollAction = (id: number, rollState: RollStateType) => {
+    let entryPresent = false
+    if (attendance) {
+      const newAttendance = attendance?.student_roll_states.map((roll) => {
+        if (roll.student_id === id) {
+          entryPresent = true
+          roll.roll_state = rollState
+        }
+      })
+      if (!entryPresent) {
+        let latestAttendance = attendance
+        latestAttendance.student_roll_states = [...attendance.student_roll_states, { student_id: id, roll_state: rollState }]
+        setAttendance(latestAttendance)
+      }
+    }
+    let newRollArray = [...rollArray]
+    newRollArray[id] = rollState
+    setRollArray(newRollArray)
+  }
+
   const onToolbarAction = (action: ToolbarAction) => {
     if (action === "roll") {
       setIsRollMode(true)
+      
     }
 
     if(action==="sort"){
@@ -79,15 +125,28 @@ export const HomeBoardPage: React.FC = () => {
  }
 
   const onActiveRollAction = (action: ActiveRollAction) => {
-    if (action === "exit") {
-      setIsRollMode(false)
+    setIsRollMode(false)
+    if (data) setAttendanceList(data.students)
+    if (action === "complete") {
+      console.log(attendance)
+      const res = submitAttendance(attendance);
+      console.log(res);
+    }
+  }
+
+  const filterByAttendace = (type: ItemType) => {
+    if (data) {
+      const newStudentList = data.students.filter((student) => {
+        return type === "all" ? !!rollArray[student.id] : rollArray[student.id] === type
+      })
+      setAttendanceList(newStudentList)
     }
   }
 
   return (
     <>
       <S.PageContainer>
-        <Toolbar onItemClick={onToolbarAction} text={sortingText} handleSearch={handleSearch} />
+        <Toolbar onItemClick={onToolbarAction} sortingText={sortingText} handleSearch={handleSearch} />
 
         {loadState === "loading" && (
           <CenteredContainer>
@@ -98,7 +157,7 @@ export const HomeBoardPage: React.FC = () => {
         {loadState === "loaded"  && studentsList && (
           <>
             {studentsList?.map((s) => (
-              <StudentListTile key={s.id} isRollMode={isRollMode} student={s} />
+              <StudentListTile key={s.id} isRollMode={isRollMode} student={s} onRollChange={onRollAction} rollStateList={rollArray} />
             ))}
           </>
         )}
@@ -109,7 +168,7 @@ export const HomeBoardPage: React.FC = () => {
           </CenteredContainer>
         )}
       </S.PageContainer>
-      <ActiveRollOverlay isActive={isRollMode} onItemClick={onActiveRollAction} />
+      <ActiveRollOverlay isActive={isRollMode} onItemClick={onActiveRollAction} stateList={rollStateList} onRollFilterClick={filterByAttendace} />
     </>
   )
 }
@@ -117,17 +176,17 @@ export const HomeBoardPage: React.FC = () => {
 type ToolbarAction = "roll" | "sort" | "changeSortFilter"| "search"
 interface ToolbarProps {
   onItemClick: (action: ToolbarAction, value?: string) => void
-  text: (value?: string)=>void
-  handleSearch: (value?: string)=>void
+  sortingText: string
+  handleSearch: any
 }
 const Toolbar: React.FC<ToolbarProps> = (props) => {
-  const { onItemClick, text, handleSearch } = props
+  const { onItemClick, sortingText, handleSearch } = props
 
  
   return (
     <S.ToolbarContainer>
       <S.Row>
-        <div onClick={() => onItemClick("sort")}>{text} </div>
+        <div onClick={() => onItemClick("sort")}>{sortingText} </div>
         <div onClick={() => onItemClick("changeSortFilter")}> ↑↓ </div>
       </S.Row>
       
@@ -167,3 +226,10 @@ const S = {
     }
   `,
 }
+
+interface StateList {
+  type: ItemType
+  count: number
+}
+
+type ItemType = RollStateType | "all"
