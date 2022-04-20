@@ -114,7 +114,7 @@ export const HomeBoardPage: React.FC = () => {
   const handleSearch=(e:any)=>{
     e.preventDefault()
     let searchedName=e.target.value
-    let res=studentsList.filter(x=>x.first_name===searchedName|| x.last_name===searchedName|| searchedName===x.first_name+ " "+ x.last_name)
+    let res=studentsList.filter((x: { first_name: string; last_name: string })=>x.first_name===searchedName|| x.last_name===searchedName|| searchedName===x.first_name+ " "+ x.last_name)
     if(searchedName.length===0){
       void getStudents()
       setStudentsList(data?.students)
@@ -156,7 +156,7 @@ export const HomeBoardPage: React.FC = () => {
 
         {loadState === "loaded"  && studentsList && (
           <>
-            {studentsList?.map((s) => (
+            {studentsList?.map((s: any) => (
               <StudentListTile key={s.id} isRollMode={isRollMode} student={s} onRollChange={onRollAction} rollStateList={rollArray} />
             ))}
           </>
